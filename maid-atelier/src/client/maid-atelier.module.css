@@ -2159,6 +2159,36 @@ body[data-dsh-maid-atelier][data-ds-dark-theme] [data-phase='active'] [data-comp
     inset 0 0 0 3px rgba(255, 255, 255, 0.05);
 }
 
+/* The vision image-upload button (registered into `conversation.input.left`
+   with a hardcoded hashed class) gets a stable skin hook from the decoration
+   pass; style it like the sibling command "+" control so it no longer depends
+   on that hash drifting across frontend builds. */
+body[data-dsh-maid-atelier] [data-composer-card] button[data-skin-chrome='composer-image-upload'] {
+  display: grid;
+  box-sizing: border-box;
+  place-items: center;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(197, 164, 104, 0.68);
+  border-radius: 50%;
+  color: #405a99;
+  background: rgba(255, 253, 248, 0.68);
+  box-shadow:
+    0 3px 10px rgba(37, 54, 99, 0.12),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.42);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] button[data-skin-chrome='composer-image-upload'] {
+  border-color: rgba(211, 180, 119, 0.72);
+  color: #ead39f;
+  background: rgba(28, 45, 88, 0.82);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.26),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.05);
+}
+
 body[data-dsh-maid-atelier] [data-phase='active'] [data-composer-card] button[class*='primary'] {
   width: 38px;
   height: 38px;
@@ -2312,6 +2342,92 @@ body[data-dsh-maid-atelier] [data-composer-card]
   body[data-dsh-maid-atelier] [data-composer-card] [class*='trailing']
     button[aria-haspopup='menu'] [class*='triggerEffort'] {
     display: none;
+  }
+}
+
+/* Narrow cards collapse the composer's left tool cluster (command "+", mode
+   switch, image upload) behind one skin-injected toggle that opens a small
+   popover above the composer; desktop keeps the inline cluster untouched. */
+body[data-dsh-maid-atelier] [data-composer-card] button[data-skin-chrome='composer-tools-toggle'] {
+  display: none;
+}
+
+@container (max-width: 560px) {
+  /* Higher specificity than the skin's own add/trigger button rules, and
+     !important beats the inline `display: contents` the slot framework stamps
+     on its outlet wrapper (the image-upload button lives inside one), so the
+     cluster really collapses. The toggle sits OUTSIDE .tools (a row child),
+     so hiding every direct child never touches it. */
+  body[data-dsh-maid-atelier] [data-composer-card]:not([data-maid-tools-open]) [class*='tools'] > * {
+    display: none !important;
+  }
+
+  body[data-dsh-maid-atelier] [data-composer-card] button[data-skin-chrome='composer-tools-toggle'] {
+    display: grid;
+    box-sizing: border-box;
+    place-items: center;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0 0 2px;
+    border: 1px solid rgba(197, 164, 104, 0.68);
+    border-radius: 50%;
+    color: #405a99;
+    background: rgba(255, 253, 248, 0.68);
+    box-shadow:
+      0 3px 10px rgba(37, 54, 99, 0.12),
+      inset 0 0 0 3px rgba(255, 255, 255, 0.42);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] button[data-skin-chrome='composer-tools-toggle'] {
+    border-color: rgba(211, 180, 119, 0.72);
+    color: #ead39f;
+    background: rgba(28, 45, 88, 0.82);
+    box-shadow:
+      0 3px 12px rgba(0, 0, 0, 0.26),
+      inset 0 0 0 3px rgba(255, 255, 255, 0.05);
+  }
+
+  body[data-dsh-maid-atelier] [data-composer-card][data-maid-tools-open] [class*='tools'] {
+    position: absolute;
+    /* The card is the positioned ancestor (product .card has position:
+       relative), so the popover floats above the whole composer instead of
+       covering the input area between the row and the card top. */
+    bottom: calc(100% + 12px);
+    left: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid rgba(197, 164, 104, 0.42);
+    border-radius: 14px;
+    background: rgba(248, 250, 255, 0.92);
+    backdrop-filter: blur(12px) saturate(0.9);
+    box-shadow: 0 14px 34px rgba(13, 29, 68, 0.28);
+  }
+
+  body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card][data-maid-tools-open] [class*='tools'] {
+    border-color: rgba(211, 180, 119, 0.4);
+    background: rgba(13, 25, 59, 0.94);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Only non-button containers (the .modes div) need flex to reveal their
+     nested trigger; buttons keep their own grid centering. */
+  body[data-dsh-maid-atelier] [data-composer-card][data-maid-tools-open] [class*='tools'] > :not([data-skin-chrome='composer-tools-toggle']):not(button) {
+    display: flex;
+  }
+
+  body[data-dsh-maid-atelier] [data-composer-card][data-maid-tools-open] [class*='tools']
+    :is(button[class*='add'], button[data-skin-chrome='composer-image-upload'], [class*='modes'] button[class*='trigger']) {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
   }
 }
 

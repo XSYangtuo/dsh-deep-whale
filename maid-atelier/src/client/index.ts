@@ -299,6 +299,8 @@ export function apply(ctx: Context): void {
   let observer: MutationObserver | undefined
   let titlebarOverlay: WindowControlsOverlay | undefined
   let syncTitlebarHeight: (() => void) | undefined
+  let composerToolsDispose: (() => void) | undefined
+  let markedUploadButton: HTMLElement | undefined
 
   ctx.effect(() => () => {
     delete body.dataset.dshMaidAtelier
@@ -339,6 +341,11 @@ export function apply(ctx: Context): void {
       if (title !== null) title.replaceWith(wordmark)
     })
     sidebarBrandRestores.clear()
+    composerToolsDispose?.()
+    if (markedUploadButton !== undefined) {
+      delete markedUploadButton.dataset.skinChrome
+      delete markedUploadButton.dataset.skinOwner
+    }
     if (themeColorMeta?.isConnected && themeColorMeta.content === SKIN_SYSTEM_CHROME_COLOR) {
       themeColorMeta.content = previousThemeColor ?? ''
     }
@@ -562,6 +569,67 @@ export function apply(ctx: Context): void {
     composerPhase = next
   }
 
+  /* Mobile composer tools: the cluster's three left controls (command "+",
+     mode switch, and the vision image-upload button from the
+     `conversation.input.left` slot) collapse behind one skin-owned toggle on
+     narrow cards; the toggle opens a small popover above the composer. The
+     upload button also gets a stable skin hook so its look no longer depends
+     on the hashed class its plugin hardcodes. Desktop keeps the inline row. */
+  const syncComposerTools = (): void => {
+    const tools = document.querySelector<HTMLElement>("[data-composer-card] [class*='tools']")
+    if (tools === null) return
+
+    const upload = [...tools.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.getAttribute('aria-haspopup') === null && button.getAttribute('title') !== null)
+    if (upload !== undefined && upload.dataset.skinChrome !== 'composer-image-upload') {
+      upload.dataset.skinChrome = 'composer-image-upload'
+      upload.dataset.skinOwner = SKIN_OWNER
+      markedUploadButton = upload
+    }
+
+    const row = tools.parentElement
+    const card = tools.closest<HTMLElement>('[data-composer-card]')
+    if (row === null || card === null) return
+    if (row.querySelector("[data-skin-chrome='composer-tools-toggle']") !== null) return
+
+    const toggle = document.createElement('button')
+    toggle.type = 'button'
+    toggle.dataset.skinChrome = 'composer-tools-toggle'
+    toggle.dataset.skinOwner = SKIN_OWNER
+    toggle.setAttribute('aria-label', '更多输入选项')
+    toggle.setAttribute('aria-expanded', 'false')
+    toggle.textContent = '⋯'
+    ownedNodes.add(toggle)
+
+    const close = (): void => {
+      card.removeAttribute('data-maid-tools-open')
+      toggle.setAttribute('aria-expanded', 'false')
+    }
+    toggle.addEventListener('click', (event) => {
+      event.stopPropagation()
+      if (card.hasAttribute('data-maid-tools-open')) close()
+      else {
+        card.setAttribute('data-maid-tools-open', '')
+        toggle.setAttribute('aria-expanded', 'true')
+      }
+    })
+    const onDocPointer = (event: MouseEvent): void => {
+      const target = event.target instanceof Node ? event.target : null
+      if (target !== null && (tools.contains(target) || toggle.contains(target))) return
+      close()
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') close()
+    }
+    document.addEventListener('click', onDocPointer, true)
+    document.addEventListener('keydown', onKey, true)
+    composerToolsDispose = (): void => {
+      document.removeEventListener('click', onDocPointer, true)
+      document.removeEventListener('keydown', onKey, true)
+    }
+    row.insertBefore(toggle, tools)
+  }
+
   /* The settings mask is mounted inside a promoted sidebar descendant. Chrome
      can omit sibling composited layers from that backdrop sample, so seat a
      copy of the existing frame immediately before the mask while it is open. */
@@ -595,6 +663,7 @@ export function apply(ctx: Context): void {
   const initialSidebar = document.querySelector<HTMLElement>(SIDEBAR_COLUMN_SELECTOR)
   if (initialSidebar) applySidebarWidth(initialSidebar.getBoundingClientRect().width)
   syncComposerMotion()
+  syncComposerTools()
   syncSettingsBackdropFrame()
   syncProjectedState()
 
@@ -688,6 +757,7 @@ export function apply(ctx: Context): void {
     if (backdropChanged) syncBackdrop()
     if (composerChanged) {
       syncComposerMotion()
+      syncComposerTools()
     }
     if (settingsStateChanged) syncSettingsBackdropFrame()
   })

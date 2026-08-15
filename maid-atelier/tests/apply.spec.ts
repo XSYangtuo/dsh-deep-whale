@@ -987,6 +987,88 @@ describe('Maid Atelier skin apply', () => {
     expect(document.body.hasAttribute('data-maid-composer-motion')).toBe(false)
   })
 
+  it('collapses the composer tool cluster behind a skin toggle and marks the upload button', async () => {
+    document.body.innerHTML = `
+      <div data-phase="active">
+        <div data-composer-card>
+          <div class="fixture_row">
+            <div class="fixture_tools">
+              <button class="fixture_add" aria-haspopup="listbox">+</button>
+              <div class="fixture_modes"><button class="fixture_trigger"><span class="fixture_triggerIcon"></span></button></div>
+              <div data-slot="conversation.input.left" style="display:contents">
+                <button class="fixture_vision" title="添加图片">img</button>
+                <input type="file" style="display:none">
+              </div>
+            </div>
+            <div class="fixture_trailing">send</div>
+          </div>
+        </div>
+      </div>
+    `
+    fiber = await mount()
+    const tools = document.querySelector<HTMLElement>('.fixture_tools')!
+    const card = document.querySelector<HTMLElement>('[data-composer-card]')!
+    const row = document.querySelector<HTMLElement>('.fixture_row')!
+
+    const upload = tools.querySelector<HTMLElement>("[data-skin-chrome='composer-image-upload']")
+    expect(upload).not.toBeNull()
+    expect(upload?.dataset.skinOwner).toBe('maid-atelier')
+
+    const toggle = row.firstElementChild as HTMLElement
+    expect(toggle?.dataset.skinChrome).toBe('composer-tools-toggle')
+    expect(card.hasAttribute('data-maid-tools-open')).toBe(false)
+
+    toggle.click()
+    expect(card.hasAttribute('data-maid-tools-open')).toBe(true)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+
+    document.body.click()
+    expect(card.hasAttribute('data-maid-tools-open')).toBe(false)
+
+    toggle.click()
+    expect(card.hasAttribute('data-maid-tools-open')).toBe(true)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(card.hasAttribute('data-maid-tools-open')).toBe(false)
+
+    // A later observer pass must not duplicate the toggle or the marker.
+    const phaseRoot = document.querySelector<HTMLElement>('[data-phase]')!
+    phaseRoot.dataset.phase = 'hero'
+    await flushMutations()
+    phaseRoot.dataset.phase = 'active'
+    await flushMutations()
+    expect(document.querySelectorAll("[data-skin-chrome='composer-tools-toggle']")).toHaveLength(1)
+    expect(document.querySelectorAll("[data-skin-chrome='composer-image-upload']")).toHaveLength(1)
+
+    await fiber.dispose()
+    expect(document.querySelector("[data-skin-chrome='composer-tools-toggle']")).toBeNull()
+    expect(upload?.dataset.skinChrome).toBeUndefined()
+    expect(upload?.dataset.skinOwner).toBeUndefined()
+  })
+
+  it('styles the upload button and the narrow-card tool collapse in the skin', () => {
+    expect(CSS).toMatch(
+      /button\[data-skin-chrome='composer-image-upload'\]\s*\{[^}]*width: 38px[^}]*border-radius: 50%/s,
+    )
+    expect(CSS).toMatch(
+      /\[data-ds-dark-theme\] [^{]*button\[data-skin-chrome='composer-image-upload'\]\s*\{[^}]*rgba\(28, 45, 88, 0\.82\)/s,
+    )
+    expect(CSS).toMatch(
+      /button\[data-skin-chrome='composer-tools-toggle'\]\s*\{[^}]*display: none/s,
+    )
+    expect(CSS).toMatch(
+      /@container \(max-width: 560px\)[\s\S]*button\[data-skin-chrome='composer-tools-toggle'\]\s*\{[^}]*border-radius: 50%/s,
+    )
+    expect(CSS).toMatch(
+      /\[data-maid-tools-open\] [^{]*\[class\*='tools'\]\s*\{[^}]*position: absolute[^}]*bottom: calc\(100% \+ 12px\)/s,
+    )
+    expect(CSS).toMatch(
+      /@container \(max-width: 560px\)[\s\S]*\[data-composer-card\]:not\(\[data-maid-tools-open\]\) [^{]*\[class\*='tools'\] > \*\s*\{[^}]*display: none !important/s,
+    )
+    expect(CSS).toMatch(
+      /\[data-maid-tools-open\] [^{]*\[class\*='tools'\] > :not\(\[data-skin-chrome='composer-tools-toggle'\]\):not\(button\)\s*\{[^}]*display: flex/s,
+    )
+  })
+
   it('preserves mirror-driven composer sizing and clears the statistics dock', () => {
     const cardRule = CSS.match(/\[data-composer-card\]\s*\{([^}]*)\}/s)?.[1] ?? ''
     const textareaRule = CSS.match(/\[data-composer-card\] textarea\s*\{([^}]*)\}/s)?.[1] ?? ''
