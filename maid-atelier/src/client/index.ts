@@ -34,6 +34,8 @@ import './maid-atelier.module.css'
 import { MAID_ATELIER_TITLEBAR_BRAND } from './titlebar-brand.ts'
 
 const SKIN_TITLE = '深海女仆工坊 · DeepSeek Harness'
+/** Replaces the sidebar "DeepSeek Harness" wordmark with a personal title. */
+const SIDEBAR_BRAND_TITLE = '大肥鱼の秘书处'
 const SKIN_OWNER = 'maid-atelier'
 const SKIN_SYSTEM_CHROME_COLOR = '#0b193f'
 const SIDEBAR_COLUMN_SELECTOR = ":is([data-pane='sidebar'], [class*='sidebarCol'])"
@@ -134,7 +136,34 @@ function decorateTitlebarBrand(ownedNodes: Set<Element>): void {
   ownedNodes.add(brand)
   titlebar.prepend(brand)
 }
-function decorateSidebar(ownedNodes: Set<Element>, decoratedElements: Set<HTMLElement>): void {
+/**
+ * Swap the sidebar "DeepSeek Harness" wordmark (BrandWordmark svg) for a
+ * personal title span, remembering the original svg so dispose can put it
+ * back. Idempotent: a React re-render recreates the svg and drops the
+ * span, and the sidebar observer re-runs this to re-apply.
+ */
+function decorateSidebarBrand(sidebarBrandRestores: Map<HTMLButtonElement, Element>): void {
+  const sidebar = document.querySelector<HTMLElement>(SIDEBAR_COLUMN_SELECTOR)
+  if (sidebar === null) return
+  const brandButton = sidebar.querySelector<HTMLButtonElement>("button[class*='brand']")
+  if (brandButton === null) return
+  if (brandButton.querySelector("[data-skin-chrome='sidebar-brand-title']") !== null) return
+  const wordmark = brandButton.querySelector('svg')
+  if (wordmark === null) return
+  const title = document.createElement('span')
+  title.dataset.skinChrome = 'sidebar-brand-title'
+  title.dataset.skinOwner = SKIN_OWNER
+  title.textContent = SIDEBAR_BRAND_TITLE
+  title.style.cssText = "display:block;width:max-content;max-width:100%;margin-inline:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:inherit;font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:600;letter-spacing:.06em;text-shadow:0 1px 2px #02081cb8;"
+  wordmark.replaceWith(title)
+  sidebarBrandRestores.set(brandButton, wordmark)
+}
+
+function decorateSidebar(
+  ownedNodes: Set<Element>,
+  decoratedElements: Set<HTMLElement>,
+  sidebarBrandRestores: Map<HTMLButtonElement, Element>,
+): void {
   const sidebar = document.querySelector<HTMLElement>(SIDEBAR_COLUMN_SELECTOR)
   const sidebarRoot = sidebar?.querySelector<HTMLElement>(':scope > div')
   if (!sidebar || !sidebarRoot) return
@@ -172,6 +201,7 @@ function decorateSidebar(ownedNodes: Set<Element>, decoratedElements: Set<HTMLEl
     sidebarRoot.prepend(mascot)
   }
 
+  decorateSidebarBrand(sidebarBrandRestores)
 }
 
 function decorateWorkspaceTree(decoratedElements: Set<HTMLElement>): void {
@@ -255,6 +285,7 @@ export function apply(ctx: Context): void {
 
   const ownedNodes = new Set<Element>()
   const decoratedElements = new Set<HTMLElement>()
+  const sidebarBrandRestores = new Map<HTMLButtonElement, Element>()
   let themeColorMeta: HTMLMetaElement | null = null
   let previousThemeColor: string | undefined
   let themeColorObserver: MutationObserver | undefined
@@ -303,6 +334,11 @@ export function apply(ctx: Context): void {
       delete element.dataset.maidSessionFirst
       delete element.dataset.maidSessionLast
     })
+    sidebarBrandRestores.forEach((wordmark, brandButton) => {
+      const title = brandButton.querySelector("[data-skin-chrome='sidebar-brand-title']")
+      if (title !== null) title.replaceWith(wordmark)
+    })
+    sidebarBrandRestores.clear()
     if (themeColorMeta?.isConnected && themeColorMeta.content === SKIN_SYSTEM_CHROME_COLOR) {
       themeColorMeta.content = previousThemeColor ?? ''
     }
@@ -553,7 +589,7 @@ export function apply(ctx: Context): void {
   }
 
   decorateTitlebarBrand(ownedNodes)
-  decorateSidebar(ownedNodes, decoratedElements)
+  decorateSidebar(ownedNodes, decoratedElements, sidebarBrandRestores)
   decorateWorkspaceTree(decoratedElements)
   ensureSidebarObserved()
   const initialSidebar = document.querySelector<HTMLElement>(SIDEBAR_COLUMN_SELECTOR)
@@ -569,7 +605,7 @@ export function apply(ctx: Context): void {
   const syncSidebarDecorations = (): void => {
     syncTitlebarHeight?.()
     decorateTitlebarBrand(ownedNodes)
-    decorateSidebar(ownedNodes, decoratedElements)
+    decorateSidebar(ownedNodes, decoratedElements, sidebarBrandRestores)
     decorateWorkspaceTree(decoratedElements)
     ensureSidebarObserved()
     const sidebar = document.querySelector<HTMLElement>(SIDEBAR_COLUMN_SELECTOR)

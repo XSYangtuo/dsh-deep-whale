@@ -109,7 +109,7 @@ describe('Maid Atelier skin apply', () => {
     foreign.remove()
   })
 
-  it('keeps the mascot independent and leaves the native vector brand intact', async () => {
+  it('keeps the mascot independent and swaps the native vector brand for the personal title', async () => {
     document.body.innerHTML = `
       <div data-pane="sidebar">
         <div>
@@ -125,12 +125,15 @@ describe('Maid Atelier skin apply', () => {
     expect(mascot?.src).toContain('data:image/webp;base64,')
     const corners = document.querySelector("[data-skin-chrome='sidebar-corners']")
     expect(corners?.querySelectorAll('[data-skin-corner]')).toHaveLength(4)
-    const brand = document.querySelector("button[class*='brand'] > svg")
-    expect(brand).not.toBeNull()
+    const title = document.querySelector<HTMLElement>("[data-skin-chrome='sidebar-brand-title']")
+    expect(title?.textContent).toBe('大肥鱼の秘书处')
+    expect(document.querySelector("button[class*='brand'] > svg")).toBeNull()
     expect(document.querySelector("[data-skin-chrome='brand-lockup']")).toBeNull()
 
     await fiber.dispose()
     expect(document.querySelector("[data-skin-owner='maid-atelier']")).toBeNull()
+    expect(document.querySelector("button[class*='brand'] > svg")).not.toBeNull()
+    expect(document.querySelector("[data-skin-chrome='sidebar-brand-title']")).toBeNull()
   })
 
   it('decorates a sidebar mounted after the skin', async () => {
@@ -142,7 +145,8 @@ describe('Maid Atelier skin apply', () => {
     await flushMutations()
 
     expect(document.querySelector("[data-skin-chrome='sidebar-mascot']")).not.toBeNull()
-    expect(document.querySelector("button[class*='brand'] > svg")).not.toBeNull()
+    expect(document.querySelector("[data-skin-chrome='sidebar-brand-title']")?.textContent).toBe('大肥鱼の秘书处')
+    expect(document.querySelector("button[class*='brand'] > svg")).toBeNull()
     expect(document.querySelector("[data-skin-chrome='brand-lockup']")).toBeNull()
   })
 
@@ -876,6 +880,26 @@ describe('Maid Atelier skin apply', () => {
     expect(bubbleRule).not.toContain('backdrop-filter')
     expect(CSS).not.toContain("div:not([data-variant])")
     expect(CSS).toContain("[data-variant='think']")
+  })
+
+  it('backs the chat message column with a feathered frosted wash for legibility', () => {
+    const washRule = CSS.match(
+      /body\[data-dsh-maid-atelier\]:not\(\[data-ds-dark-theme\]\) \[data-chat-flow\]::before\s*\{([^}]*)\}/s,
+    )?.[1] ?? ''
+    const darkWashRule = CSS.match(
+      /body\[data-dsh-maid-atelier\]\[data-ds-dark-theme\] \[data-chat-flow\]::before\s*\{([^}]*)\}/s,
+    )?.[1] ?? ''
+    const frameRule = CSS.match(
+      /body\[data-dsh-maid-atelier\] \[data-chat-flow\]::before\s*\{([^}]*)\}/s,
+    )?.[1] ?? ''
+    expect(washRule).toContain('rgba(248, 250, 255, 0.52)')
+    expect(washRule).toContain('backdrop-filter')
+    expect(darkWashRule).toContain('rgba(10, 20, 48, 0.55)')
+    expect(darkWashRule).toContain('backdrop-filter')
+    // The feather mask lives on the wash layer only, so message copy never fades.
+    expect(frameRule).toContain('mask-image: radial-gradient')
+    expect(frameRule).toContain('border-radius: 24px')
+    expect(frameRule).toContain('z-index: -1')
   })
 
   it('keeps reasoning and command-style assistant blocks outside Markdown bubbles', () => {

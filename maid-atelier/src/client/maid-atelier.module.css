@@ -2322,6 +2322,42 @@ body[data-dsh-maid-atelier] [class*='ConversationRoot'] {
   background: transparent;
 }
 
+/* The chat message column carries the stable `data-chat-flow` hook (the
+   hashed `_column` class is not stable across frontend builds). Give it a
+   translucent porcelain base so copy stays legible over the character
+   artwork; individual bubbles keep their own denser wash on top. The wash
+   lives on a ::before layer so the radial feather mask softens only the
+   frosted glass at its rim — the text never fades — and the panel melts
+   into the backdrop instead of ending in a hard line. */
+body[data-dsh-maid-atelier] [data-chat-flow] {
+  box-sizing: border-box;
+  position: relative;
+  padding: 12px 14px;
+}
+
+body[data-dsh-maid-atelier] [data-chat-flow]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 24px;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 106% 106% at 50% 50%, #000 78%, transparent 98%);
+  mask-image: radial-gradient(ellipse 106% 106% at 50% 50%, #000 78%, transparent 98%);
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme]) [data-chat-flow]::before {
+  background: rgba(248, 250, 255, 0.52);
+  backdrop-filter: blur(6px) saturate(0.94);
+  border: 1px solid rgba(197, 164, 104, 0.22);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-chat-flow]::before {
+  background: rgba(10, 20, 48, 0.55);
+  backdrop-filter: blur(6px) saturate(0.9);
+  border: 1px solid rgba(211, 180, 119, 0.2);
+}
+
 body[data-dsh-maid-atelier] header[class*='header'] {
   border-bottom-color: rgba(197, 164, 104, 0.28);
 }
