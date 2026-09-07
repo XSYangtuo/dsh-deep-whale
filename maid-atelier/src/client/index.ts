@@ -5,6 +5,7 @@
  * wordmark; every skin-owned write is restored by the Cordis effect disposer.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import React from 'react'
 import {
   MAID_ATELIER_BOW_CLEAN,
   MAID_ATELIER_CHIBI,
@@ -39,7 +40,12 @@ const SIDEBAR_BRAND_TITLE = '大肥鱼の秘书处'
 const SKIN_OWNER = 'maid-atelier'
 const SKIN_SYSTEM_CHROME_COLOR = '#0b193f'
 const SIDEBAR_COLUMN_SELECTOR = ":is([data-pane='sidebar'], [class*='sidebarCol'])"
-const SETTINGS_TRIGGER_SELECTOR = "[data-slot='sidebar.settings'] > :is(button, [role='button'])"
+// dsh 0.1.2 wraps the settings trigger button in a `.triggerRow` div (added
+// with the reconnect indicator). Match the trigger at any depth, pinned to
+// `aria-haspopup='dialog'` so it cannot collide with other controls inside
+// the slot; the descendant form also keeps matching the pre-0.1.2 layout
+// where the button was a direct child of the slot.
+const SETTINGS_TRIGGER_SELECTOR = "[data-slot='sidebar.settings'] :is(button, [role='button'])[aria-haspopup='dialog']"
 const SETTINGS_MASK_SELECTOR = "[role='presentation'] > [class*='mask']"
 const ACTIVE_CONVERSATION_SELECTOR = "[data-phase='active']"
 const ACTIVE_CHAT_SELECTOR = `${ACTIVE_CONVERSATION_SELECTOR} [data-chat-flow]`
@@ -85,6 +91,117 @@ const BACKDROP_PROPERTIES = [
   '--maid-workspace-crest-art',
   '--maid-workspace-ribbon-art',
 ] as const
+
+/** Which whale-girl figures the backdrop stage shows (settings choice). */
+type CharacterMode = 'both' | 'big' | 'small'
+
+/** Settings namespace owned by the skin; must mirror the Host-side registration. */
+const SKIN_SETTINGS_NAMESPACE = 'ui-skin-maid-atelier'
+
+const CHARACTER_MODE_OPTIONS: ReadonlyArray<{ value: CharacterMode; label: string; title: string }> = [
+  { value: 'both', label: '双鲸鱼', title: '左右两位鲸鱼娘都显示（默认）' },
+  { value: 'big', label: '大鲸鱼', title: '只显示左侧的大鲸鱼娘' },
+  { value: 'small', label: '小鲸鱼', title: '只显示右侧的小鲸鱼娘' },
+]
+
+/** Structural client scope face over the settingsScope service (ui-settings base). */
+interface SkinSettingsScope {
+  getSnapshot(): {
+    status: 'loading' | 'ready' | 'unavailable'
+    value: unknown
+  }
+  subscribe(listener: () => void): () => void
+  set(field: string, value: unknown): Promise<void>
+}
+
+function resolveCharacterMode(snapshotValue: unknown): CharacterMode {
+  const section = snapshotValue as { characterMode?: CharacterMode } | undefined
+  return section?.characterMode === 'big' || section?.characterMode === 'small'
+    ? section.characterMode
+    : 'both'
+}
+
+/** Plugin-config card (设置 → 插件 → 插件配置): the character-mode choice. */
+function CharacterModeCard({ scope }: { scope: SkinSettingsScope | undefined }): React.ReactElement {
+  const read = (): CharacterMode => (
+    scope === undefined ? 'both' : resolveCharacterMode(scope.getSnapshot().value)
+  )
+  const [mode, setMode] = React.useState<CharacterMode>(read)
+  React.useEffect(() => {
+    if (scope === undefined) return undefined
+    return scope.subscribe(() => setMode(read()))
+  }, [scope])
+  const choose = (next: CharacterMode): void => {
+    setMode(next)
+    document.body.dataset.maidCharacterMode = next
+    if (scope !== undefined) void scope.set('characterMode', next)
+  }
+  const buttonStyle = (active: boolean): React.CSSProperties => ({
+    border: active
+      ? '1px solid var(--dsw-alias-state-business-primary)'
+      : '1px solid var(--dsw-alias-border-l2)',
+    background: active ? 'var(--dsw-alias-state-business-primary)' : 'transparent',
+    color: active ? '#fff' : 'var(--dsw-alias-label-secondary)',
+    borderRadius: 6,
+    padding: '4px 10px',
+    fontSize: 12,
+    lineHeight: 1.4,
+    cursor: 'pointer',
+  })
+  const buttons = CHARACTER_MODE_OPTIONS.map((option) => React.createElement(
+    'button',
+    {
+      key: option.value,
+      type: 'button',
+      style: buttonStyle(mode === option.value),
+      title: option.title,
+      'aria-pressed': mode === option.value,
+      onClick: () => choose(option.value),
+    },
+    option.label,
+  ))
+  return React.createElement(
+    'div',
+    {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        padding: '14px 16px',
+        border: '1px solid var(--dsw-alias-border-l2)',
+        borderRadius: 10,
+        background: 'var(--dsw-alias-bg-layer-1)',
+      },
+    },
+    React.createElement(
+      'div',
+      {
+        style: {
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        },
+      },
+      React.createElement(
+        'span',
+        { style: { fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } },
+        '鲸鱼角色',
+      ),
+      React.createElement(
+        'span',
+        { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' } },
+        '背景中显示的鲸鱼娘',
+      ),
+    ),
+    React.createElement(
+      'div',
+      { style: { display: 'flex', gap: 4 }, role: 'group', 'aria-label': '鲸鱼角色' },
+      buttons,
+    ),
+  )
+}
 
 function createCharacterStage(): HTMLDivElement {
   const stage = document.createElement('div')
@@ -307,6 +424,7 @@ export function apply(ctx: Context): void {
     delete body.dataset.maidComposerMotion
     delete body.dataset.maidSidebarCompact
     delete body.dataset.maidSidebarSize
+    delete body.dataset.maidCharacterMode
     for (const [attribute, value] of previousProjectedStates) {
       if (value === null) body.removeAttribute(attribute)
       else body.setAttribute(attribute, value)
@@ -370,6 +488,23 @@ export function apply(ctx: Context): void {
   })
   syncSystemChrome()
   body.dataset.dshMaidAtelier = ''
+  // Character-mode default; the settings mirror overrides once it answers.
+  body.dataset.maidCharacterMode = 'both'
+  let characterScope: SkinSettingsScope | undefined
+  const settingsScope = ctx.get('settingsScope') as
+    | { bind(spec: { namespace: string }): SkinSettingsScope }
+    | undefined
+  if (settingsScope !== undefined) {
+    characterScope = settingsScope.bind({ namespace: SKIN_SETTINGS_NAMESPACE })
+    const syncCharacterMode = (): void => {
+      body.dataset.maidCharacterMode = resolveCharacterMode(characterScope!.getSnapshot().value)
+    }
+    syncCharacterMode()
+    ctx.effect(
+      () => characterScope!.subscribe(syncCharacterMode),
+      'ui-skin-maid-atelier: character-mode settings watch',
+    )
+  }
   body.style.setProperty('--maid-top-trim-art', `url(${MAID_ATELIER_TOP_TRIM_TILE})`)
   body.style.setProperty('--maid-bottom-trim-art', `url(${MAID_ATELIER_BOTTOM_TRIM_TILE})`)
   body.style.setProperty('--maid-bottom-crest-art', `url(${MAID_ATELIER_BOTTOM_CREST})`)
@@ -670,6 +805,18 @@ export function apply(ctx: Context): void {
   const characterStage = createCharacterStage()
   ownedNodes.add(characterStage)
   body.prepend(characterStage)
+
+  // One plugin-config card in 设置 → 插件 → 插件配置, dispatched by the owner
+  // for this skin's settings namespace (the Host half registers it). The card
+  // owns its copy, current value and write path; edits persist through the
+  // settings document via the bound scope.
+  const slots = ctx.get('slots')
+  if (slots !== undefined) {
+    slots.inject('settings.plugin.item', () => slots.register(
+      { name: 'settings.plugin.item', key: SKIN_SETTINGS_NAMESPACE },
+      () => React.createElement(CharacterModeCard, { scope: characterScope }),
+    ))
+  }
 
   const syncSidebarDecorations = (): void => {
     syncTitlebarHeight?.()

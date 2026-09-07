@@ -52,6 +52,9 @@ describe('Maid Atelier skin apply', () => {
   it('registers cleanup before a later CSSOM initialization failure', () => {
     let dispose: (() => void) | undefined
     const ctx = {
+      get(): undefined {
+        return undefined
+      },
       effect(factory: () => () => void): void {
         dispose = factory()
       },
@@ -381,6 +384,28 @@ describe('Maid Atelier skin apply', () => {
     await fiber.dispose()
     expect(document.querySelector("[data-skin-chrome='character-stage']")).toBeNull()
   }, 10_000)
+
+  it('hides the unselected whale-girl figure per the character-mode choice', () => {
+    const hideRule = CSS.match(
+      /\[data-maid-character-mode='big'\] \[data-maid-character='right'\][\s\S]*?\[data-maid-character-mode='small'\] \[data-maid-character='left'\]\s*\{([^}]*)\}/s,
+    )?.[1] ?? ''
+    expect(hideRule).toContain('display: none')
+    expect(CSS).toMatch(/\[data-maid-character-mode='big'\] \[data-maid-character='right'\]/)
+    expect(CSS).toMatch(/\[data-maid-character-mode='small'\] \[data-maid-character='left'\]/)
+  })
+
+  it('defaults the character mode to both and retracts it on dispose', async () => {
+    fiber = await mount()
+    expect(document.body.getAttribute('data-maid-character-mode')).toBe('both')
+    await fiber.dispose()
+    expect(document.body.hasAttribute('data-maid-character-mode')).toBe(false)
+  })
+
+  it('keeps both mounted characters switchable only through the CSS rule', async () => {
+    fiber = await mount()
+    expect(document.querySelectorAll('[data-maid-character]')).toHaveLength(2)
+    await fiber.dispose()
+  })
 
   it('installs and restores the raster control plates', async () => {
     document.body.style.setProperty('--maid-new-session-art', 'legacy')

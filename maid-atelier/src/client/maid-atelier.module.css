@@ -133,6 +133,14 @@ body[data-dsh-maid-atelier] [data-maid-character='right'] {
   height: clamp(540px, 92vh, 1120px);
 }
 
+/* The General-settings character choice keeps only one whale-girl on stage:
+   大鲸鱼 (big, left) or 小鲸鱼 (small, right). Both stay mounted so switching
+   never replays the load; display:none takes the hidden figure out of paint. */
+body[data-dsh-maid-atelier][data-maid-character-mode='big'] [data-maid-character='right'],
+body[data-dsh-maid-atelier][data-maid-character-mode='small'] [data-maid-character='left'] {
+  display: none;
+}
+
 body[data-dsh-maid-atelier][data-ds-dark-theme] [data-maid-character] {
   filter:
     brightness(0.84)
@@ -704,7 +712,7 @@ body[data-dsh-maid-atelier] [data-maid-sidebar-footer]::before {
 body[data-dsh-maid-atelier]
     [data-maid-sidebar-footer]
     [data-slot='sidebar.settings']
-    > :is(button, [role='button']) {
+    :is(button, [role='button'])[aria-haspopup='dialog'] {
   position: relative;
   z-index: 1;
   width: 100%;
@@ -733,7 +741,7 @@ body[data-dsh-maid-atelier]
 body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
     [data-maid-sidebar-footer]
     [data-slot='sidebar.settings']
-    > :is(button, [role='button']) {
+    :is(button, [role='button'])[aria-haspopup='dialog'] {
   position: relative;
   flex: 1 1 auto;
   width: 100%;
@@ -745,7 +753,7 @@ body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
 body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
     [data-maid-sidebar-footer]
     [data-slot='sidebar.settings']
-    > :is(button, [role='button'])
+    :is(button, [role='button'])[aria-haspopup='dialog']
     [data-slot='settings.trigger'] {
   line-height: 1;
 }
@@ -753,14 +761,14 @@ body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
 body[data-dsh-maid-atelier]
     [data-maid-sidebar-footer]
     [data-slot='sidebar.settings']
-    > :is(button, [role='button'])::before {
+    :is(button, [role='button'])[aria-haspopup='dialog']::before {
   content: none;
 }
 
 body[data-dsh-maid-atelier]
     [data-maid-sidebar-footer]
     [data-slot='sidebar.settings']
-    > :is(button, [role='button']):is(:hover, :focus-visible) {
+    :is(button, [role='button'])[aria-haspopup='dialog']:is(:hover, :focus-visible) {
   color: #fff8e8;
   background: none;
   filter: brightness(1.1) drop-shadow(0 5px 12px rgba(2, 8, 28, 0.3));
@@ -771,7 +779,7 @@ body[data-dsh-maid-atelier]
 body[data-dsh-maid-atelier]
     [data-maid-sidebar-footer]
     [data-slot='sidebar.settings']
-    > :is(button, [role='button']) svg {
+    :is(button, [role='button'])[aria-haspopup='dialog'] svg {
   color: #e8c77f;
   filter: drop-shadow(0 1px 2px rgba(2, 7, 24, 0.62));
 }
@@ -846,7 +854,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [data-maid-sidebar-fo
 body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
     [data-maid-sidebar-footer]
     [data-slot='sidebar.settings']
-    > :is(button, [role='button']) {
+    :is(button, [role='button'])[aria-haspopup='dialog'] {
   width: 38px;
   min-width: 38px;
   min-height: 38px;
@@ -864,7 +872,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
 body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
     [data-maid-sidebar-footer]
     [data-slot='sidebar.settings']
-    > :is(button, [role='button'])::before {
+    :is(button, [role='button'])[aria-haspopup='dialog']::before {
   display: none;
 }
 
@@ -1186,7 +1194,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
       button[class*='newSession'],
       [class*='sectionHeader'] [class*='iconButton'],
       [class*='search'] [class*='searchButton'],
-      [data-maid-sidebar-footer] [data-slot='sidebar.settings'] > :is(button, [role='button'])
+      [data-maid-sidebar-footer] [data-slot='sidebar.settings'] :is(button, [role='button'])[aria-haspopup='dialog']
     ) {
   box-sizing: border-box;
   width: var(--maid-rail-control-size);
@@ -1221,7 +1229,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
       button[class*='newSession'],
       [class*='sectionHeader'] [class*='iconButton'],
       [class*='search'] [class*='searchButton'],
-      [data-maid-sidebar-footer] [data-slot='sidebar.settings'] > :is(button, [role='button'])
+      [data-maid-sidebar-footer] [data-slot='sidebar.settings'] :is(button, [role='button'])[aria-haspopup='dialog']
     ):is(:hover, :focus-visible) {
   color: #fff1ce;
   border-color: rgba(244, 218, 164, 0.94);
@@ -1894,7 +1902,7 @@ body[data-dsh-maid-atelier][data-maid-settings-open]
   > div
   > :has(
     [data-slot='sidebar.settings']
-      > :is(button, [role='button'])[aria-expanded='true']
+      :is(button, [role='button'])[aria-haspopup='dialog'][aria-expanded='true']
   ) {
   z-index: 1000;
 }
